@@ -1,0 +1,53 @@
+- hosts: all
+  become: yes
+  
+  vars_prompt:
+    - name: sonarqube_host_url
+      prompt: Type Sonarqube server url. For example sonarqube.localhost
+      default: sonarqube.localhost`
+
+    - name: sonarqube_host_port
+      prompt: Type Sonarqube server port. For example 8080
+      default: 8080
+
+    - name: sonarqube_host_ip
+      prompt: Type Sonarqube server ip address. For example 127.0.0.1
+      default: "127.0.0.1"
+
+  tasks:
+    - name: Install Required Packages
+      apt:
+        update_cache: yes
+        name:
+          - nodejs
+
+    - name: Synchronize sonarqube source code files
+      synchronize:
+        src: sonar-scanner-4.8.0/
+        dest: /opt/sonar-scanner/
+
+    - name: Confiture sonar-scanner properties
+      lineinfile:
+        path: /opt/sonar-scanner/conf/sonar-scanner.properties
+        line: "{{ item }}"
+        insertafter: EOF
+        state: present
+      with_items:
+        - sonar.host.url=http://{{ sonarqube_host_url }}:{{ sonarqube_host_port }}
+        - sonar.sourceEncoding=UTF-8
+
+    - name: sonar-scanner command to the PATH variable.
+      template:
+        src: sonar-scanner.sh.j2
+        dest: /etc/profile.d/sonar-scanner.sh
+
+    - name: Add Sonarqube Server IP to hosts file
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item }}"
+        insertafter: EOF
+        state: present
+      with_items:
+        - "{{ sonarqube_host_ip }}  {{ sonarqube_host_url }}"
+
+
